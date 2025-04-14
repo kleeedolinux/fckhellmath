@@ -1,6 +1,7 @@
 $(document).ready(function() {
   let currentAnswer = null;
   let dayCount = getStoredDay();
+  let timerInterval = null;
   
   $("#dayCounter").text(dayCount);
   
@@ -61,6 +62,14 @@ $(document).ready(function() {
     }
   });
   
+  $("#showResultBtn").click(function() {
+    $("#result")
+      .removeClass("hidden text-green-500")
+      .addClass("text-red-500")
+      .text(`The answer is ${currentAnswer}`);
+    $("#nextBtn").removeClass("hidden");
+  });
+  
   function getSelectedOperations() {
     const operations = [];
     $(".operation:checked").each(function() {
@@ -80,48 +89,85 @@ $(document).ready(function() {
       return;
     }
     
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    
     const ops = operations.split("");
     const generateNumber = (digits) => {
       if (digits === 1) return Math.floor(Math.random() * 9) + 1;
-      return Math.floor(Math.random() * (10 ** digits - 10 ** (digits - 1)) + 10 ** (digits - 1));
+      const min = 10 ** (digits - 1);
+      const max = (10 ** digits) - 1;
+      return Math.floor(Math.random() * (max - min + 1) + min);
     };
     
     const randomOp = ops[Math.floor(Math.random() * ops.length)];
-    const num1 = generateNumber(digits);
-    const num2 = generateNumber(digits);
-    
-    let answer, question;
+    let num1, num2, answer, question;
     
     switch (randomOp) {
       case "+":
+        num1 = generateNumber(digits);
+        num2 = generateNumber(digits);
         question = `${num1} + ${num2}`;
         answer = num1 + num2;
         break;
       case "-":
-        question = `${num1} - ${num2}`;
-        answer = num1 - num2;
+        num1 = generateNumber(digits);
+        num2 = generateNumber(digits);
+        question = `${Math.max(num1, num2)} - ${Math.min(num1, num2)}`;
+        answer = Math.max(num1, num2) - Math.min(num1, num2);
         break;
       case "*":
+        num1 = generateNumber(digits);
+        num2 = generateNumber(digits);
         question = `${num1} × ${num2}`;
         answer = num1 * num2;
         break;
       case "/":
+        num2 = generateNumber(digits);
+        
+        if (num2 === 0) num2 = 1;
+        
+        num1 = generateNumber(digits);
+        
+        if (num1 === 0) num1 = 1;
+        
         const dividend = num1 * num2;
+        
         question = `${dividend} ÷ ${num2}`;
         answer = num1;
         break;
       default:
+        num1 = generateNumber(digits);
+        num2 = generateNumber(digits);
         question = `${num1} + ${num2}`;
         answer = num1 + num2;
     }
     
-    // Display the challenge
     $("#challenge").removeClass("hidden");
     $("#question").text(question);
     $("#answer").val("").focus();
     $("#result").addClass("hidden");
     $("#nextBtn").addClass("hidden");
+    $("#showResultBtn").addClass("hidden");
+    $("#timer").text("3:00").removeClass("hidden");
+    
     currentAnswer = answer;
+    
+    let totalSeconds = 180;
+    timerInterval = setInterval(function() {
+      totalSeconds--;
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      $("#timer").text(`${minutes}:${seconds < 10 ? '0' : ''}${seconds}`);
+      
+      if (totalSeconds <= 0) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        $("#showResultBtn").removeClass("hidden");
+      }
+    }, 1000);
   }
   
   function checkAnswer(userAnswer) {
